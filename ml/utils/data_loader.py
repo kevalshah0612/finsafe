@@ -7,8 +7,7 @@ def load_training_data():
     try:
         dataset = load_dataset(
             "mitulshah/transaction-categorization",
-            split="train[:5000]",
-            trust_remote_code=True
+            split="train[:5000]"
         )
         df = dataset.to_pandas()
         print(f"Columns found: {list(df.columns)}")
@@ -36,28 +35,95 @@ def load_training_data():
 
 def _fallback():
     templates = {
-        "Food":          ["mcdonalds","starbucks","uber eats","dominos","chipotle",
-                          "grubhub","doordash","subway","burger king","pizza hut"],
-        "Transport":     ["uber","lyft","shell gas","delta airlines","amtrak",
-                          "parking","bp fuel","enterprise car","toll payment","metro card"],
-        "Subscriptions": ["netflix","spotify","amazon prime","apple icloud","hulu",
-                          "disney plus","adobe creative","microsoft 365","youtube premium","hbo max"],
-        "Shopping":      ["walmart","target","amazon purchase","ebay","best buy",
-                          "costco","home depot","zara","ikea","etsy"],
-        "Healthcare":    ["cvs pharmacy","walgreens","hospital bill","urgent care",
-                          "dental clinic","gym membership","planet fitness","health insurance"],
-        "Housing":       ["rent payment","mortgage","electric bill","gas utility",
-                          "water utility","internet service","comcast","verizon"],
-        "Transfer":      ["venmo","zelle payment","paypal","cashapp",
-                          "bank transfer","atm withdrawal","wire transfer","western union"],
-        "Income":        ["paycheck deposit","freelance payment","tax refund",
-                          "salary deposit","bonus payment","dividend","cashback reward"]
+        "Food & Dining": [
+            "mcdonalds","burger king","wendys","taco bell","subway","chipotle",
+            "starbucks","dunkin donuts","dominos","pizza hut","panera bread",
+            "chick fil a","five guys","shake shack","grubhub","uber eats",
+            "doordash","instacart food","whole foods","trader joes",
+            "popeyes","kfc","panda express","olive garden","applebees",
+            "dennys","ihop","waffle house","sonic drive in","dairy queen",
+            "little caesars","papa johns","jimmy johns","jersey mikes","wingstop"
+        ],
+        "Transportation": [
+            "uber","lyft","grab","shell gas","bp fuel","exxon gas",
+            "chevron station","delta airlines","united airlines","american airlines",
+            "southwest airlines","amtrak","greyhound bus","mta subway",
+            "parking garage","hertz rental","enterprise car","zipcar",
+            "via ride","taxi cab","metro card","toll payment","avis car",
+            "budget rental","spirit airlines","jetblue","frontier airlines"
+        ],
+        "Entertainment & Recreation": [
+            "netflix","spotify","hulu","disney plus","hbo max",
+            "youtube premium","twitch","patreon","apple music","tidal",
+            "peacock","paramount","espn plus","discovery plus","masterclass",
+            "movie theater","amc theaters","regal cinemas","concert ticket",
+            "eventbrite","stubhub","ticketmaster","steam games","playstation"
+        ],
+        "Shopping & Retail": [
+            "walmart","target","amazon purchase","ebay","best buy",
+            "costco","sams club","home depot","lowes","ikea",
+            "zara","hm clothing","gap store","old navy","uniqlo",
+            "nordstrom","macys","kohls","tjmaxx","marshalls",
+            "etsy purchase","shein","zappos shoes","nike store",
+            "adidas","foot locker","dick sporting goods","rei outdoor"
+        ],
+        "Healthcare & Medical": [
+            "cvs pharmacy","walgreens prescription","rite aid","hospital bill",
+            "urgent care","dental clinic","eye doctor","dermatologist",
+            "physical therapy","chiropractor","labcorp","quest diagnostics",
+            "health insurance","gym membership","planet fitness","equinox",
+            "yoga studio","headspace","calm app","peloton","anytime fitness",
+            "orange theory","crunch fitness"
+        ],
+        "Utilities & Services": [
+            "rent payment","mortgage payment","electric bill","gas utility",
+            "water utility","internet service","comcast","verizon fios",
+            "att internet","spectrum cable","property tax","renters insurance",
+            "home insurance","maintenance repair","plumber service",
+            "electrician","pest control","lawn service","storage unit",
+            "adobe creative","microsoft 365","dropbox","slack","zoom",
+            "amazon prime","apple icloud","linkedin premium","audible","kindle"
+        ],
+        "Financial Services": [
+            "venmo transfer","zelle payment","paypal transfer","cashapp send",
+            "bank transfer","wire transfer","atm withdrawal","check deposit",
+            "western union","money gram","revolut transfer","wise transfer",
+            "square cash","google pay","apple pay transfer","coinbase",
+            "robinhood","fidelity","schwab","vanguard","etrade"
+        ],
+        "Income": [
+            "paycheck direct deposit","freelance payment","tax refund",
+            "salary deposit","bonus payment","commission deposit",
+            "dividend payment","interest earned","cashback reward",
+            "refund credit","reimbursement deposit","rental income",
+            "consulting fee","side hustle payment","venmo received"
+        ],
+        "Charity & Donations": [
+            "red cross donation","gofundme","patreon donation","church offering",
+            "salvation army","goodwill donation","united way","habitat humanity",
+            "doctors without borders","wikipedia donation","aclu donation"
+        ],
+        "Government & Legal": [
+            "irs payment","state tax payment","dmv fee","passport fee",
+            "court fee","parking ticket","speeding ticket","property tax",
+            "municipal fine","government fee","social security","medicare"
+        ]
     }
+
     rows = []
     for cat, keywords in templates.items():
         for kw in keywords:
-            for variant in [kw, f"{kw} purchase", f"online {kw}", f"{kw} - debit", f"pmt {kw}"]:
+            for variant in [
+                kw,
+                f"{kw} purchase",
+                f"online {kw}",
+                f"{kw} - debit",
+                f"pmt {kw}",
+                f"{kw} charge",
+                f"{kw} transaction"
+            ]:
                 rows.append({"description": variant, "category": cat})
+
     df = pd.DataFrame(rows)
     print(f"Fallback loaded: {len(df)} rows across {df['category'].nunique()} categories")
     return df
