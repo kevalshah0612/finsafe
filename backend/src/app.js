@@ -21,6 +21,11 @@ app.use(
   }),
 );
 
+app.get("/", (_req, res) => {
+  res.send("FinSafe backend is running");
+});
+
+
 app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
