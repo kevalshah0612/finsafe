@@ -7,6 +7,8 @@ import { jobsRouter } from "./routes/jobs.js";
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(express.json({ limit: "1mb" }));
 app.use(cors({ origin: env.corsOrigin }));
 
