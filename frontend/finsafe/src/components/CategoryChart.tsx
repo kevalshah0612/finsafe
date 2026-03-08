@@ -6,9 +6,10 @@ const Tooltip = ({
   payload,
 }: {
   active?: boolean;
-  payload?: Array<{ name: string; value: number }>;
+  payload?: Array<{ name: string; value: number; payload?: { percent?: number } }>;
 }) => {
   if (!active || !payload?.length) return null;
+  const percent = payload[0].payload?.percent ?? 0;
   return (
     <div
       style={{
@@ -22,7 +23,7 @@ const Tooltip = ({
     >
       <p style={{ margin: 0, color: "#9ca3af" }}>{payload[0].name}</p>
       <p style={{ margin: "4px 0 0", fontWeight: 600 }}>
-        {fmtShort(payload[0].value)}
+        {fmtShort(payload[0].value)} ({percent.toFixed(1)}%)
       </p>
     </div>
   );
@@ -33,12 +34,16 @@ export function CategoryChart({
 }: {
   categoryMap: Record<string, number>;
 }) {
-  const data = Object.entries(categoryMap)
+  const baseData = Object.entries(categoryMap)
     .filter(([k]) => k !== "Income")
-    .sort((a, b) => b[1] - a[1])
+    .sort((a, b) => b[1] - a[1]);
+
+  const total = baseData.reduce((sum, [, value]) => sum + value, 0);
+  const data = baseData
     .map(([name, value], i) => ({
       name,
       value,
+      percent: total > 0 ? (value / total) * 100 : 0,
       color: PALETTE[i % PALETTE.length],
     }));
 
@@ -78,7 +83,9 @@ export function CategoryChart({
               className="w-2 h-2 rounded-full flex-shrink-0"
               style={{ background: e.color }}
             />
-            <span className="text-gray-400 text-xs">{e.name}</span>
+            <span className="text-gray-400 text-xs">
+              {e.name} ({e.percent.toFixed(1)}%)
+            </span>
           </div>
         ))}
       </div>
