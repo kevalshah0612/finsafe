@@ -1,6 +1,9 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import pandas as pd
+from typing import List, Optional
 
 from models.categorizer    import categorize_transactions, get_training_rows
 from models.anomaly        import detect_anomalies
@@ -10,8 +13,6 @@ from models.category_drift import detect_category_drift
 from models.forecast       import forecast_spending
 from utils.health_score    import compute_health_score
 
-app = Flask(__name__)
-CORS(app)
 
 _MAX_TRANSACTIONS = 5_000
 _DROP_COLS = [
@@ -20,33 +21,60 @@ _DROP_COLS = [
 ]
 
 
-@app.route('/health', methods=['GET'])
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    get_training_rows()   
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+class Transaction(BaseModel):
+    description: str
+    amount: float
+    date: Optional[str] = None
+
+
+class PredictRequest(BaseModel):
+    transactions: List[Transaction]
+
+
+@app.get("/health")
 def health():
-    return jsonify({
+    return {
         "status":        "ok",
         "models":        "loaded",
         "training_rows": get_training_rows()
-    })
+    }
 
 
-@app.route('/predict', methods=['POST'])
-def predict():
+@app.post("/predict")
+def predict(body: PredictRequest):
     try:
-        data = request.json.get('transactions', [])
+        data = [t.dict() for t in body.transactions]
+
         if not data:
-            return jsonify({"error": "No transactions provided"}), 400
+            raise HTTPException(status_code=400, detail="No transactions provided")
 
         if len(data) > _MAX_TRANSACTIONS:
-            return jsonify({
-                "error": f"Too many transactions. Max allowed: {_MAX_TRANSACTIONS}"
-            }), 400
+            raise HTTPException(
+                status_code=400,
+                detail=f"Too many transactions. Max allowed: {_MAX_TRANSACTIONS}"
+            )
 
         df = pd.DataFrame(data)
         df.columns = df.columns.str.lower().str.strip()
 
         missing = [c for c in ['description', 'amount'] if c not in df.columns]
         if missing:
-            return jsonify({"error": f"Missing required columns: {missing}"}), 400
+            raise HTTPException(status_code=400, detail=f"Missing required columns: {missing}")
 
         df['amount'] = (
             df['amount'].astype(str)
@@ -54,16 +82,14 @@ def predict():
         )
         df['amount'] = pd.to_numeric(df['amount'], errors='coerce').fillna(0).abs()
 
-        if 'date' not in df.columns:
+        if 'date' not in df.columns or df['date'].isnull().all():
             df['date'] = pd.Timestamp.today()
 
-        # Core pipeline
         df = categorize_transactions(df)
         df = detect_anomalies(df)
         df = compute_merchant_risk(df)
         df = detect_velocity_burst(df)
 
-        # Aggregates
         drift_alerts    = detect_category_drift(df)
         forecast        = forecast_spending(df)
         anomalies_count = int(df['anomaly'].sum())
@@ -79,7 +105,6 @@ def predict():
             .to_dict(orient='records')
         )
 
-
         df['date_parsed'] = pd.to_datetime(df['date'], errors='coerce')
         df['week_label']  = df['date_parsed'].dt.strftime('Week %W')
         weekly_spend = (
@@ -90,11 +115,9 @@ def predict():
         )
 
         df = df.drop(columns=[c for c in _DROP_COLS if c in df.columns])
-
-        # Replace NaN numerics with None (serializes to JSON null, not "")
         df = df.where(pd.notna(df), other=None)
 
-        return jsonify({
+        return {
             "transactions":       df.to_dict(orient='records'),
             "category_summary":   category_summary,
             "weekly_spend":       weekly_spend,
@@ -104,11 +127,9 @@ def predict():
             "anomalies_count":    anomalies_count,
             "burst_count":        burst_count,
             "total_transactions": len(df)
-        })
+        }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True)
+        raise HTTPException(status_code=500, detail=str(e))

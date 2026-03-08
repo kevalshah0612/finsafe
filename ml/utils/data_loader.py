@@ -1,11 +1,14 @@
 import pandas as pd
 from datasets import load_dataset
+import os
 
 
 def load_training_data():
     print("Loading transaction data from Hugging Face...")
     try:
-        dataset = load_dataset("mitulshah/transaction-categorization", split="train[:20000]")
+
+        HF_TOKEN = os.environ.get("HF_TOKEN")
+        dataset = load_dataset("mitulshah/transaction-categorization",token=HF_TOKEN, split="train[:20000]")
         hf_df = dataset.to_pandas()
         hf_df.columns = hf_df.columns.str.strip().str.lower()
 
