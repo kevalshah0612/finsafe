@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import pandas as pd
+import numpy as np
 
 from models.categorizer    import categorize_transactions, TRAINING_ROWS
 from models.anomaly        import detect_anomalies
@@ -73,8 +74,20 @@ def predict():
             .to_dict(orient='records')
         )
 
+        tx_cols = [
+            'date', 'description', 'amount', 'category', 'category_confidence',
+            'anomaly', 'anomaly_reason', 'anomaly_score',
+            'merchant_risk', 'fraud_signal', 'velocity_burst', 'velocity_burst_msg'
+        ]
+        tx_cols = [c for c in tx_cols if c in df.columns]
+        tx_df = df[tx_cols].copy()
+        for col in tx_df.columns:
+            if pd.api.types.is_datetime64_any_dtype(tx_df[col]):
+                tx_df[col] = tx_df[col].dt.strftime('%Y-%m-%d %H:%M:%S')
+        tx_df = tx_df.replace({np.nan: None})
+
         return jsonify({
-            "transactions":       df.fillna('').to_dict(orient='records'),
+            "transactions":       tx_df.to_dict(orient='records'),
             "category_summary":   category_summary,
             "weekly_spend":       weekly_spend,
             "forecast":           forecast,
