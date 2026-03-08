@@ -9,7 +9,7 @@ const toNumber = (value, fallback) => {
 
 export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
-  port: toNumber(process.env.PORT, 8080),
+  port: toNumber(process.env.PORT, 3000),
   corsOrigin: process.env.CORS_ORIGIN || "*",
   apiRateLimitWindowMs: toNumber(process.env.API_RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
   apiRateLimitMax: toNumber(process.env.API_RATE_LIMIT_MAX, 100),
